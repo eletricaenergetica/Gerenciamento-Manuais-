@@ -1,26 +1,79 @@
-from git import Repo
+import subprocess
+import logging
+from pathlib import Path
 from datetime import datetime
-import os
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(levelname)s: %(message)s"
+)
+
+
+def executar(comando, pasta):
+    """Executa um comando Git."""
+
+    resultado = subprocess.run(
+        comando,
+        cwd=pasta,
+        capture_output=True,
+        text=True
+    )
+
+    if resultado.returncode != 0:
+        raise RuntimeError(resultado.stderr.strip())
+
+    return resultado.stdout.strip()
+
+
+def localizar_repositorio():
+    """
+    Localiza automaticamente a pasta que contém o .git
+    """
+
+    pasta = Path(__file__).resolve().parent
+
+    while pasta != pasta.parent:
+
+        if (pasta / ".git").exists():
+            return pasta
+
+        pasta = pasta.parent
+
+    raise RuntimeError("Repositório Git não encontrado.")
 
 
 def publicar_git():
 
-    # Repositório Git na pasta do projeto
-    repo = Repo(os.getcwd())
+    repo = localizar_repositorio()
 
-    # Adiciona todos os arquivos
-    repo.git.add(A=True)
+    logging.info(f"Repositório encontrado em:\n{repo}")
 
-    # Só faz commit se houver alterações
-    if repo.is_dirty(untracked_files=True):
+    # Adiciona arquivos
+    executar(["git", "add", "."], repo)
 
-        mensagem = f"Atualização automática - {datetime.now():%d/%m/%Y %H:%M}"
+    # Verifica se existe alteração
+    status = executar(["git", "status", "--porcelain"], repo)
 
-        repo.index.commit(mensagem)
+    if not status:
+        return "Nenhuma alteração encontrada."
 
-        origin = repo.remote("origin")
-        origin.push()
+    mensagem = datetime.now().strftime(
+        "Atualização automática %d/%m/%Y %H:%M"
+    )
 
-        return "Publicação realizada com sucesso!"
+    executar(["git", "commit", "-m", mensagem], repo)
 
-    return "Nenhuma alteração para publicar."
+    executar(["git", "push", "origin", "main"], repo)
+
+    return "Publicação realizada com sucesso!"
+
+
+if __name__ == "__main__":
+
+    try:
+
+        print(publicar_git())
+
+    except Exception as erro:
+
+        print("ERRO:", erro)
