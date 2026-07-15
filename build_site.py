@@ -57,16 +57,16 @@ def gerar_site(projeto):
         projeto
     )
 
-    # Remove o conteúdo antigo do site
+    # Remove pastas antigas de distribuição para gerar do zero
     if os.path.exists("pdfs"):
-        logging.info("Removendo pasta antiga: pdfs")
+        logging.info("Removendo pasta antiga de distribuição: pdfs")
         shutil.rmtree("pdfs")
 
     if os.path.exists("index.html"):
         logging.info("Removendo index.html antigo")
         os.remove("index.html")
 
-    # Cria estrutura nova
+    # Cria estrutura nova de distribuição
     os.makedirs(
         projeto_pdf_dir,
         exist_ok=True
@@ -83,27 +83,34 @@ def gerar_site(projeto):
             )
             continue
 
-        if os.path.exists(origem):
-            nome_arquivo = os.path.basename(origem)
-            destino = os.path.join(
-                projeto_pdf_dir,
-                nome_arquivo
-            )
+        nome_arquivo = os.path.basename(origem)
+        destino = os.path.join(
+            projeto_pdf_dir,
+            nome_arquivo
+        )
 
+        # Caminho alternativo na nossa pasta local segura
+        caminho_local_seguro = os.path.join("manuais_originais", nome_arquivo)
+
+        # Se o caminho original do banco não existir, tenta pegar da nossa pasta manuais_originais
+        if not os.path.exists(origem) and os.path.exists(caminho_local_seguro):
+            origem = caminho_local_seguro
+
+        if os.path.exists(origem):
             shutil.copy2(
                 origem,
                 destino
             )
 
             logging.info(
-                "Copiado: %s -> %s",
+                "Copiado com sucesso: %s -> %s",
                 origem,
                 destino
             )
         else:
             logging.warning(
-                "Arquivo não encontrado: %s",
-                origem
+                "Arquivo não encontrado em 'manuais_originais': %s",
+                nome_arquivo
             )
 
     # Gera HTML
